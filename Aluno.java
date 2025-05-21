@@ -1,16 +1,13 @@
-import java.sql.Date;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 public class Aluno {
 
     private Integer MATRICULA;
     private String NOME;
-    private LocalDate DATANASCIMENTO;
+    private String DATANASCIMENTO;
     private String CURSO;
     private String CPF;
 
-    public Aluno(int Matricula, String nome, LocalDate dtNascimento, String curso, String cpf) {
+    public Aluno(int Matricula, String nome, String dtNascimento, String curso, String cpf) {
         this.MATRICULA = Matricula;
         this.NOME = nome;
         this.DATANASCIMENTO = dtNascimento;
@@ -26,7 +23,7 @@ public class Aluno {
         return this.MATRICULA;
     }
 
-    public LocalDate getDataNascimento() {
+    public String getDataNascimento() {
         return this.DATANASCIMENTO;
     }
 
@@ -48,10 +45,7 @@ public class Aluno {
 
         Integer matricula = Integer.parseInt(partes[0]);
         String nome = partes[1];
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        LocalDate dataNascimento = LocalDate.parse(partes[2], formatter);
-
+        String dataNascimento = partes[2];
         String curso = partes[3];
         String cpf = partes[4];
 

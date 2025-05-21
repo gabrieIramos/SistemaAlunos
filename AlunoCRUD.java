@@ -14,7 +14,7 @@ public class AlunoCRUD {
         try (BufferedReader br = new BufferedReader(new FileReader(ARQUIVO))) {
             String linha;
             while ((linha = br.readLine()) != null) {
-                alunos.add(Aluno.fromString(linha)); // método que converte linha em objeto Aluno
+                alunos.add(Aluno.fromString(linha)); 
             }
         } catch (Exception e) {
             System.err.println("Erro ao ler o arquivo: " + e.getMessage());
@@ -42,6 +42,17 @@ public class AlunoCRUD {
     public static void ExcluirAluno(int Matricula){
 
         List<Aluno> alunos = ObterTodosAlunos();
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(ARQUIVO))) {
+            for (Aluno aluno : alunos) {
+                if (aluno.getMatricula() != Matricula) {
+                    bw.write(aluno.toString());
+                    bw.newLine();
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Erro ao excluir aluno: " + e.getMessage());
+        }
 
     }
 }
