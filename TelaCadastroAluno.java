@@ -1,14 +1,16 @@
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.text.MaskFormatter;
-
 import java.awt.*;
 import java.text.ParseException;
 import java.time.LocalDate;
+import java.util.List; 
+import java.time.format.DateTimeFormatter; 
 
 public class TelaCadastroAluno extends JFrame {
-    private JTextField campoNome, campoMatricula, campoCurso, campoDataNascimento, campoCpf;
-    private JButton botaoCadastrar, botaoLimpar, botaoExcluir;
+    private JTextField campoNome, campoMatricula, campoCurso;
+    private JFormattedTextField campoDataNascimento, campoCpf; 
+    private JButton botaoCadastrar, botaoLimpar, botaoExcluir, botaoAtualizar; 
     private JTable tabelaAlunos;
     private DefaultTableModel modeloTabela;
 
@@ -33,9 +35,9 @@ public class TelaCadastroAluno extends JFrame {
         }
 
         try {
-            MaskFormatter mascaraData = new MaskFormatter("###.###.###-##");
-            mascaraData.setPlaceholderCharacter('_');
-            campoCpf = new JFormattedTextField(mascaraData);
+            MaskFormatter mascaraCpf = new MaskFormatter("###.###.###-##");
+            mascaraCpf.setPlaceholderCharacter('_');
+            campoCpf = new JFormattedTextField(mascaraCpf);
             campoCpf.setColumns(11);
         } catch (ParseException e) {
             e.printStackTrace();
@@ -46,15 +48,23 @@ public class TelaCadastroAluno extends JFrame {
         botaoCadastrar = new JButton("Cadastrar");
         botaoLimpar = new JButton("Limpar");
         botaoExcluir = new JButton("Excluir Selecionado");
+        botaoAtualizar = new JButton("Atualizar Selecionado"); 
 
-        // Tabela e modelo
+        
         modeloTabela = new DefaultTableModel(
                 new Object[] { "Nome", "Matrícula", "Curso", "Data Nasc.", "CPF" }, 0);
         tabelaAlunos = new JTable(modeloTabela);
         tabelaAlunos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
+       
+        tabelaAlunos.getSelectionModel().addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting() && tabelaAlunos.getSelectedRow() != -1) {
+                preencherCamposComAlunoSelecionado();
+            }
+        });
+
         // Painel de formulário
-        JPanel painelForm = new JPanel(new GridLayout(6, 2, 10, 5));
+        JPanel painelForm = new JPanel(new GridLayout(7, 2, 10, 5));
         painelForm.setBorder(BorderFactory.createTitledBorder("Cadastro de Aluno"));
         painelForm.add(new JLabel("Nome:"));
         painelForm.add(campoNome);
@@ -68,6 +78,7 @@ public class TelaCadastroAluno extends JFrame {
         painelForm.add(campoCpf);
         painelForm.add(botaoCadastrar);
         painelForm.add(botaoLimpar);
+        painelForm.add(botaoAtualizar); 
 
         JPanel painelInferior = new JPanel();
         painelInferior.add(botaoExcluir);
@@ -81,37 +92,101 @@ public class TelaCadastroAluno extends JFrame {
         botaoCadastrar.addActionListener(e -> cadastrarAluno());
         botaoLimpar.addActionListener(e -> limparCampos());
         botaoExcluir.addActionListener(e -> excluirAluno());
+        botaoAtualizar.addActionListener(e -> atualizarAluno()); 
 
-          AlunoCRUD.ObterTodosAlunos().forEach(a -> {
+        carregarAlunosNaTabela();
+    }
+
+    private void carregarAlunosNaTabela() {
+        modeloTabela.setRowCount(0); 
+        List<Aluno> alunos = AlunoService.obterTodosAlunos();
+        for (Aluno a : alunos) {
             modeloTabela.addRow(new Object[] { a.getName(), a.getMatricula(), a.getCurso(), a.getDataNascimento(), a.getCPF() });
-        });
+        }
     }
 
     private void cadastrarAluno() {
-        String nome = campoNome.getText().trim();
-        int matricula = Integer.parseInt(campoMatricula.getText().trim());
-        String curso = campoCurso.getText().trim();
-        String dataNascimento = campoDataNascimento.getText().trim();
-        String cpf = campoCpf.getText().trim();
+        try {
+            String nome = campoNome.getText().trim();
+            int matricula = Integer.parseInt(campoMatricula.getText().trim());
+            String curso = campoCurso.getText().trim();
+            String dataNascimento = campoDataNascimento.getText().trim();
+            String cpf = campoCpf.getText().trim();
 
-        if (nome.isEmpty() || curso.isEmpty() || matricula <= 0 ||
-                dataNascimento.isEmpty() || cpf.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Preencha todos os campos.", "Erro", JOptionPane.WARNING_MESSAGE);
+            Aluno aluno = new Aluno(matricula, nome, dataNascimento, curso, cpf);
+            AlunoService.cadastrarAluno(aluno);                
+            
+            JOptionPane.showMessageDialog(this, "Aluno cadastrado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+            carregarAlunosNaTabela(); 
+            limparCampos();
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Matrícula inválida. Digite um número.", "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalArgumentException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Erro de Validação", JOptionPane.WARNING_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao cadastrar aluno: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void atualizarAluno() {
+        int linhaSelecionada = tabelaAlunos.getSelectedRow();
+        if (linhaSelecionada == -1) {
+            JOptionPane.showMessageDialog(this, "Selecione um aluno para atualizar.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
-        if (cpf.length() != 11) {
-            JOptionPane.showMessageDialog(this, "CPF deve ter 11 dígitos.", "Erro", JOptionPane.WARNING_MESSAGE);
-            return;
+    
+        try {
+            String nome = campoNome.getText().trim();
+            int matricula = Integer.parseInt(campoMatricula.getText().trim());
+            String curso = campoCurso.getText().trim();
+            String dataNascimento = campoDataNascimento.getText().trim();
+            String cpf = campoCpf.getText().trim();
+    
+            Aluno alunoAtualizado = new Aluno(matricula, nome, dataNascimento, curso, cpf);
+            AlunoService.atualizarAluno(alunoAtualizado);
+    
+            JOptionPane.showMessageDialog(this, "Aluno atualizado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+            carregarAlunosNaTabela(); 
+            limparCampos();
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Matrícula inválida. Digite um número.", "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalArgumentException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Erro de Validação", JOptionPane.WARNING_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao atualizar aluno: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
+    }
 
-        Aluno aluno = new Aluno(matricula, nome, dataNascimento, curso, cpf);
-        AlunoCRUD.Gravar(aluno);                
+    private void excluirAluno() {
+        int linhaSelecionada = tabelaAlunos.getSelectedRow();
 
-        modeloTabela.addRow(new Object[] { aluno.getName(), aluno.getMatricula(), aluno.getCurso(), aluno.getDataNascimento(), aluno.getCPF() });
-        
-        
-        limparCampos();
+        if (linhaSelecionada != -1) {
+            int confirmacao = JOptionPane.showConfirmDialog(this, "Tem certeza que deseja excluir este aluno?", "Confirmar Exclusão", JOptionPane.YES_NO_OPTION);
+            if (confirmacao == JOptionPane.YES_OPTION) {
+                try {
+                    int matricula = (Integer) modeloTabela.getValueAt(linhaSelecionada, 1);
+                    AlunoService.excluirAluno(matricula);
+                    JOptionPane.showMessageDialog(this, "Aluno excluído com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                    carregarAlunosNaTabela(); 
+                    limparCampos();
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(this, "Erro ao excluir aluno: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Selecione um aluno para excluir.", "Aviso", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private void preencherCamposComAlunoSelecionado() {
+        int linhaSelecionada = tabelaAlunos.getSelectedRow();
+        if (linhaSelecionada != -1) {
+            campoNome.setText(modeloTabela.getValueAt(linhaSelecionada, 0).toString());
+            campoMatricula.setText(modeloTabela.getValueAt(linhaSelecionada, 1).toString());
+            campoCurso.setText(modeloTabela.getValueAt(linhaSelecionada, 2).toString());
+            campoDataNascimento.setText(modeloTabela.getValueAt(linhaSelecionada, 3).toString());
+            campoCpf.setText(modeloTabela.getValueAt(linhaSelecionada, 4).toString());
+        }
     }
 
     private void limparCampos() {
@@ -120,22 +195,7 @@ public class TelaCadastroAluno extends JFrame {
         campoCurso.setText("");
         campoDataNascimento.setText("");
         campoCpf.setText("");
-    }
-
-    private void excluirAluno() {
-        int linhaSelecionada = tabelaAlunos.getSelectedRow();
-
-        if (linhaSelecionada != -1) {
-            int matricula = (Integer) modeloTabela.getValueAt(linhaSelecionada, 1);
-            AlunoCRUD.ExcluirAluno(matricula);
-        }
-
-        if (linhaSelecionada != -1) {
-            modeloTabela.removeRow(linhaSelecionada);
-        } else {
-            JOptionPane.showMessageDialog(this, "Selecione um aluno para excluir.", "Aviso",
-                    JOptionPane.WARNING_MESSAGE);
-        }
+        tabelaAlunos.clearSelection(); 
     }
 
     public static void main(String[] args) {
